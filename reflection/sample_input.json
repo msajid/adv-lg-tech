@@ -1,0 +1,8 @@
+{
+    "customer_message": "I absolutely love my new laptop! The battery life is amazing and it's so fast. Best purchase I've made this year!!",
+    "initial_response": "",
+    "reviewer_feedback": "",
+    "final_response": "",
+    "revision_count": 0,
+    "messages": [{"role": "user", "content": "I absolutely love my new laptop! The battery life is amazing and it's so fast. Best purchase I've made this year!!"}]
+}

@@ -1,0 +1,9 @@
+langchain
+langsmith
+langgraph
+langchain-openai
+python-dotenv
+mcp
+dotenv
+langgraph-cli[inmem]
+numpy
