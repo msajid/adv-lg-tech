@@ -1,9 +1,6 @@
 {
     "dependencies": [
-        "./graph_simple.py",
-        "./config.py",
-        "./nodes.py",
-        "./state.py"
+        "."
         ],
     "graphs": {
         "customer_response_reflection": {
