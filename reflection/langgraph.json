@@ -1,7 +1,5 @@
 {
-    "dependencies": [
-        "langchain_openai"
-    ],
+    "dependencies": [.],
     "graphs": {
         "customer_response_reflection": {
             "path": "./graph_simple.py:create_reflection_graph",
