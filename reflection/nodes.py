@@ -19,22 +19,6 @@ from config import (
     MAX_REVISIONS_MESSAGE
 )
 
-
-
-def _get_model():
-    """Lazy-load and return the model instance."""
-    global _model
-    if _model is None:
-        _model = init_chat_model(
-            model=DEFAULT_MODEL,
-            model_provider="openai",
-            temperature=DEFAULT_TEMPERATURE,
-        )
-    return _model
-
-
-
-
 def _create_writer_messages(
     state: MessageResponseState, feedback: Optional[str] = None
 ) -> list:
