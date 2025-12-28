@@ -103,28 +103,16 @@ def writer_node(
     # Initialize the LLM
     llm = ChatOpenAI(
         model=DEFAULT_MODEL,     # Model name
-        use_responses_api=True   # Equivalent to useResponsesApi in JS
+        temperature=DEFAULT_TEMPERATURE
     )
 
     # Invoke the model with reasoning configuration
     response = llm.invoke(
-        messages,
-        reasoning={
-            "effort": "high",
-            "summary": "auto"  # Optional summary configuration
-        }
+        messages
     )
 
-    
-    item = next(obj for obj in response.content if obj.get("type") == "text")
-
-    item_id = item["id"]
-    item_text = item["text"]
-
-
-    print(item_id + ": " + item_text)
     # Update and return state
-    return _update_writer_state(state, item_text)
+    return _update_writer_state(state, response.content)
 
 
 def reviewer_node(state: MessageResponseState) -> MessageResponseState:
@@ -184,28 +172,14 @@ def reviewer_node(state: MessageResponseState) -> MessageResponseState:
     # Initialize the LLM
     llm = ChatOpenAI(
         model=DEFAULT_MODEL,     
-        use_responses_api=True   
+        temperature=DEFAULT_TEMPERATURE   
     )
 
     response = llm.invoke(
-        messages,
-        reasoning={
-            "effort": "high",
-            "summary": "auto"  # Optional summary configuration
-        }
+        messages
     )
-
     
-    item = next(obj for obj in response.content if obj.get("type") == "text")
-
-    item_id = item["id"]
-    item_text = item["text"]
-
-
-    print(item_id + ": " + item_text)
-
-    feedback_text = item_text
-    
+    feedback_text = response.content
     # Extract decision using structured output
     decision_prompt = (
         "Based on the given feedback provided by the agent, identify if "

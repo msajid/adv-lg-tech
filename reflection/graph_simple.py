@@ -99,7 +99,7 @@ async def process_customer_message(
         if checkpointer
         else workflow.compile()
     )
-    
+
     # Initialize workflow state
     initial_state = {
         "messages": [HumanMessage(content=customer_message)],
