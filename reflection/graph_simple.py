@@ -6,7 +6,6 @@ to improve the responses before finalizing them.
 """
 
 from typing import Dict, Any, Optional
-
 from dotenv import load_dotenv
 
 # Load environment variables FIRST before importing other modules
@@ -112,6 +111,11 @@ async def process_customer_message(
     }
     
     config = {"configurable": {"thread_id": thread_id}}
+
+    # Set stream_mode="custom" to receive the custom data in the stream
+    for chunk in app.stream(initial_state, config=config, stream_mode=["updates","custom"]):
+        print(chunk)
+
     final_state = await app.ainvoke(
         initial_state,
         config=config

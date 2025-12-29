@@ -7,3 +7,4 @@ dotenv
 langgraph-cli[inmem]
 numpy
 langgraph-api
+pytest

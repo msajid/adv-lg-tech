@@ -10,6 +10,7 @@ from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
+from langgraph.config import get_stream_writer
 
 from state import MessageResponseState, Decision, NodeName, AIReviewerResponse
 from config import (
@@ -92,13 +93,20 @@ def writer_node(
     revision_count = state.get("revision_count", 0)
     latest_decision = state.get("latest_reviewer_decision")
     
+    writer = get_stream_writer()
+    # Emit a custom key-value pair (e.g., progress update)
+    writer({"custom_revision_count": revision_count})
+
     # Determine if this is a revision or initial write
     feedback = None
     if revision_count > 0 and latest_decision == Decision.REVISE.value:
         feedback = state.get("latest_feedback_for_writer", "")
+        writer({"custom_feedback": "Received feedback for revision."})
+
     
     # Generate response
     messages = _create_writer_messages(state, feedback)
+    writer({"custom_messages": "generated messages."})
 
     # Initialize the LLM
     llm = ChatOpenAI(
@@ -106,11 +114,14 @@ def writer_node(
         temperature=DEFAULT_TEMPERATURE
     )
 
+    writer({"custom_llm": f"ChatOpenAI initialized with model {DEFAULT_MODEL}."})
+
     # Invoke the model with reasoning configuration
     response = llm.invoke(
         messages
     )
 
+    writer({"custom_response": "Received response from LLM."})
     # Update and return state
     return _update_writer_state(state, response.content)
 
