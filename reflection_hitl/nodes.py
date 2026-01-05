@@ -4,13 +4,12 @@ This module contains the writer and reviewer node implementations that
 handle response generation and review feedback.
 """
 
-from typing import Optional
-from time import sleep
-from langchain.chat_models import init_chat_model
+from typing import Optional, Literal
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
-from langgraph.config import get_stream_writer
+from langgraph.types import interrupt, Command
+from langgraph.graph import END
 
 from state import MessageResponseState, Decision, NodeName, AIReviewerResponse
 from config import (
@@ -215,7 +214,43 @@ def reviewer_node(state: MessageResponseState) -> MessageResponseState:
         ]
     }
 
+def human_review_node(state: MessageResponseState) -> Command[Literal[NodeName.PUBLISHER.value, NodeName.REJECTION.value]]:
+    # Pause execution; payload shows up under result["__interrupt__"]
+    
+    human_review_response = interrupt({
+        "Question": "Do you want to publish the AI response? (response examples {'action': 'approve'} or {'action': 'reject'} or {'action': 'edit' , 'edited_content': 'Thank you very much for your message.'})",
+        "AI response": state.get("latest_message_response_by_writer", "")
+    })
 
+    action = human_review_response.get("action")
+    state['human_review'] = action
+
+    # Route based on the response
+    if action == "approve":
+        return Command(goto=NodeName.PUBLISHER.value, 
+                       update={
+                           **state, 
+                            "messages" : [HumanMessage(content="Human reviewer approved the response.", name=NodeName.HUMAN_REVIEW.value)]
+                            }) 
+    elif action == "reject":
+        return Command(goto=NodeName.REJECTION.value, 
+                       update={
+                           **state, 
+                            "messages" : [HumanMessage(content="Human reviewer rejected the response.", name=NodeName.HUMAN_REVIEW.value)]
+                            })
+    elif action == "edit":
+        edited_content = human_review_response.get("edited_content")
+        state["latest_message_response_by_writer"] = edited_content
+        return Command(goto=NodeName.PUBLISHER.value, 
+                       update={
+                           **state, 
+                            "messages" : [HumanMessage(content="Human reviewer edited the response.", name=NodeName.HUMAN_REVIEW.value)]
+                            }) 
+    else:
+        return Command(goto=NodeName.REJECTION.value, 
+                       update={**state})  
+
+    
 def publisher_node(state: MessageResponseState) -> MessageResponseState:
     """Final node that publishes the approved response.
     
@@ -224,11 +259,29 @@ def publisher_node(state: MessageResponseState) -> MessageResponseState:
     before workflow completion.
     
     Args:
-        state: Final workflow state containing the approved response.
+        state: Final workflow state.
         
     Returns:
-        Unchanged state (ready for publication).
+        Unchanged state (human review).
 
     """
-   
+    
+    print("The response has been approved by human reviewer.")
     return {**state}
+
+def rejection_node(state: MessageResponseState): 
+    """Final node that publishes or rejects the approved response.
+    
+    This node is called when the response has been approved by the reviewer
+    or maximum revisions have been reached. It serves as the terminal node
+    before workflow completion.
+    
+    Args:
+        state: Final workflow state.
+        
+    Returns:
+        Unchanged state (human review).
+
+    """
+    
+    print("The response has been rejected by human reviewer.")

@@ -14,9 +14,9 @@ load_dotenv()
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import StateGraph, START, END
-
+from langgraph.types import Command
 from state import MessageResponseState, Decision, NodeName
-from nodes import writer_node, reviewer_node, publisher_node
+from nodes import writer_node, reviewer_node, publisher_node, human_review_node, rejection_node
 
 
 
@@ -35,7 +35,7 @@ def should_continue(state: MessageResponseState) -> str:
     """
     if state.get("continue_revision", False):
         return NodeName.WRITER.value
-    return NodeName.PUBLISHER.value
+    return NodeName.HUMAN_REVIEW.value
     
 
 def create_reflection_graph() -> StateGraph:
@@ -54,7 +54,9 @@ def create_reflection_graph() -> StateGraph:
     # Add nodes
     workflow.add_node(NodeName.WRITER.value, writer_node)
     workflow.add_node(NodeName.REVIEWER.value, reviewer_node)
+    workflow.add_node(NodeName.HUMAN_REVIEW.value, human_review_node)
     workflow.add_node(NodeName.PUBLISHER.value, publisher_node)
+    workflow.add_node(NodeName.REJECTION.value, rejection_node)
     
     # Add edges
     workflow.add_edge(START, NodeName.WRITER.value)
@@ -64,10 +66,12 @@ def create_reflection_graph() -> StateGraph:
         should_continue,
         {
             NodeName.WRITER.value: NodeName.WRITER.value,
-            NodeName.PUBLISHER.value: NodeName.PUBLISHER.value
+            NodeName.HUMAN_REVIEW.value: NodeName.HUMAN_REVIEW.value
         }
     )
     workflow.add_edge(NodeName.PUBLISHER.value, END)
+    workflow.add_edge(NodeName.REJECTION.value, END)
+
     return workflow
 
 
@@ -112,11 +116,16 @@ async def process_customer_message(
     
     config = {"configurable": {"thread_id": thread_id}}
 
-    final_state = await app.ainvoke(
+    pending_state = await app.ainvoke(
         initial_state,
         config=config
     )
     
+    print(pending_state)
+
+    # Resume with the decision; True routes to publisher, False to END
+    final_state = await app.ainvoke(Command(resume={"action": "approve"}), config=config)
+
     return final_state
 
 
@@ -139,12 +148,12 @@ async def main() -> None:
     )
     
     # Display results
+    print(f"\n📝 Human approval: {result.get('human_review', 'N/A')}")
     print(f"\n📝 Comment: {sample_comment}")
     print(f"\n✅ Response: {result.get('latest_message_response_by_writer', 'N/A')}")
     print("─" * 80)
     
-    print("\n✨ Status: Response ready to send!")
-    print("\n🎉 Demo completed! All customer comments have been processed.\n")
+    print("\n🎉 Demo completed!.\n")
 
 
 if __name__ == "__main__":
